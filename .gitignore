@@ -1,0 +1,14 @@
+# Unity-generated
+Library/
+Temp/
+Obj/
+Build/
+Logs/
+
+# macOS system files
+.DS_Store
+
+# IDE auto-generated
+*.csproj
+*.sln
+*.user
