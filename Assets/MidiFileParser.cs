@@ -144,7 +144,12 @@ public class MidiFileParser : MonoBehaviour
             // Variables for timing
             long absoluteTicks = 0;
             int tempo = 500000; // Default tempo: 500,000 microseconds per quarter note (120 BPM)
-            tempo = 352941;
+            tempo = 352941;// adjusted tempo to 170 BPM 
+        // NOTE(yoshih May'25) Some MIDI files may lack tempo data. For now, the tempo is hardcoded to 120 BPM  due to missing tempo in the test data. 
+
+        // MIDI files from Ableton and Musescore should include tempo
+        // A more flexible solution could allow manual BPM input via the Unity GUI, but we’re keeping it simple for now to avoid unnecessary complexity. 
+
             // Read track events
             while (reader.BaseStream.Position < trackEnd)
             {
@@ -167,7 +172,7 @@ public class MidiFileParser : MonoBehaviour
                             track.name = new string(reader.ReadChars(metaLength));
                             break;
                             
-                        case 0x51: // Tempo
+                        case 0x51: // Tempo // (NOTE (yoshih) this is untested)
                             if (metaLength == 3)
                             {
                                 tempo = (reader.ReadByte() << 16) | (reader.ReadByte() << 8) | reader.ReadByte();
