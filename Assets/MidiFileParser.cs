@@ -73,7 +73,7 @@ public class MidiFileParser : MonoBehaviour
                 // Read each track
                 for (int t = 0; t < numTracks; t++)
                 {
-                    MidiTrack track = ReadTrack(reader);
+                    MidiTrack track = ReadTrack(reader, midiData);
                     if (track != null)
                     {
                         midiData.tracks.Add(track);
@@ -117,7 +117,7 @@ public class MidiFileParser : MonoBehaviour
     }
 
     // Read a single MIDI track
-    private MidiTrack ReadTrack(BinaryReader reader)
+    private MidiTrack ReadTrack(BinaryReader reader, MidiData midiData)
     {
         try
         {
@@ -144,7 +144,7 @@ public class MidiFileParser : MonoBehaviour
             // Variables for timing
             long absoluteTicks = 0;
             int tempo = 500000; // Default tempo: 500,000 microseconds per quarter note (120 BPM)
-            
+            tempo = 352941;
             // Read track events
             while (reader.BaseStream.Position < trackEnd)
             {
@@ -205,7 +205,7 @@ public class MidiFileParser : MonoBehaviour
                                 else
                                 {
                                     // Note on with velocity 0 is actually a note off
-                                    HandleNoteOff(track, activeNotes, channel, note, absoluteTicks, tempo);
+                                    HandleNoteOff(track, activeNotes, channel, note, absoluteTicks, tempo, midiData.division);
                                 }
                             }
                             break;
@@ -215,7 +215,7 @@ public class MidiFileParser : MonoBehaviour
                                 byte note = reader.ReadByte();
                                 byte velocity = reader.ReadByte(); // Ignore velocity for note off
                                 
-                                HandleNoteOff(track, activeNotes, channel, note, absoluteTicks, tempo);
+                                HandleNoteOff(track, activeNotes, channel, note, absoluteTicks, tempo, midiData.division);
                             }
                             break;
                             
@@ -248,7 +248,7 @@ public class MidiFileParser : MonoBehaviour
                     int note = noteEntry.Key;
                     long onTime = noteEntry.Value;
                     
-                    HandleNoteOff(track, activeNotes, channel, note, trackEnd, tempo);
+                    HandleNoteOff(track, activeNotes, channel, note, trackEnd, tempo, midiData.division);
                 }
             }
             
@@ -262,13 +262,13 @@ public class MidiFileParser : MonoBehaviour
     }
     
     // Process a note off event
-    private void HandleNoteOff(MidiTrack track, Dictionary<int, Dictionary<int, long>> activeNotes, int channel, int note, long offTicks, int tempo)
+    private void HandleNoteOff(MidiTrack track, Dictionary<int, Dictionary<int, long>> activeNotes, int channel, int note, long offTicks, int tempo, int division)
     {
         if (activeNotes[channel].ContainsKey(note))
         {
             long onTicks = activeNotes[channel][note];
-            float startTime = TicksToSeconds(onTicks, tempo);
-            float endTime = TicksToSeconds(offTicks, tempo);
+            float startTime = TicksToSeconds(onTicks, tempo, division);
+            float endTime = TicksToSeconds(offTicks, tempo, division);
             
             MidiNote midiNote = new MidiNote
             {
@@ -285,11 +285,11 @@ public class MidiFileParser : MonoBehaviour
     }
     
     // Convert ticks to seconds based on tempo and division
-    private float TicksToSeconds(long ticks, int tempo)
+    private float TicksToSeconds(long ticks, int tempo, int division)
     {
         // tempo is in microseconds per quarter note
         // division is in ticks per quarter note
-        return (float)(ticks * tempo) / (1000000.0f * 480.0f); // Standard MIDI uses 480 ticks per quarter note
+        return (float)(ticks * tempo) / (1000000.0f * division); // Standard MIDI uses 480 ticks per quarter note
     }
     
     // Read variable-length value from MIDI file
