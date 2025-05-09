@@ -1,6 +1,6 @@
-using UnityEngine;
 using System.Collections.Generic;
 using System.IO;
+using UnityEngine;
 
 public class MidiNoteSpawner : MonoBehaviour
 {
@@ -8,7 +8,7 @@ public class MidiNoteSpawner : MonoBehaviour
     public TextAsset midiFile; // Assign your MIDI file in the inspector
     public bool playOnStart = true;
     public float playbackSpeed = 1.0f;
-    
+
     [Header("Visual Configuration")]
     public GameObject notePrefab;
     public float noteScale = 1.0f;
@@ -59,7 +59,7 @@ public class MidiNoteSpawner : MonoBehaviour
         }
 
         LoadMidiFile();
-        
+
         if (playOnStart)
         {
             StartPlayback();
@@ -68,7 +68,8 @@ public class MidiNoteSpawner : MonoBehaviour
 
     void Update()
     {
-        if (!isPlaying || midiData == null) return;
+        if (!isPlaying || midiData == null)
+            return;
 
         currentPlayTime += Time.deltaTime * playbackSpeed;
 
@@ -78,7 +79,10 @@ public class MidiNoteSpawner : MonoBehaviour
             foreach (MidiFileParser.MidiNote note in track.notes)
             {
                 // Check if note should start now
-                if (note.startTime <= currentPlayTime && note.startTime > currentPlayTime - Time.deltaTime * playbackSpeed)
+                if (
+                    note.startTime <= currentPlayTime
+                    && note.startTime > currentPlayTime - Time.deltaTime * playbackSpeed
+                )
                 {
                     SpawnNote(note);
                 }
@@ -99,12 +103,12 @@ public class MidiNoteSpawner : MonoBehaviour
         for (int i = activeNotes.Count - 1; i >= 0; i--)
         {
             SpawnedNote spawnedNote = activeNotes[i];
-            
+
             // Move note
             if (spawnedNote.gameObject != null)
             {
                 spawnedNote.gameObject.transform.position += Vector3.back * zSpeed * Time.deltaTime;
-                
+
                 // Check if note should be removed
                 if (Time.time - spawnedNote.spawnTime >= spawnedNote.lifetime)
                 {
@@ -135,14 +139,16 @@ public class MidiNoteSpawner : MonoBehaviour
         }
 
         midiData = midiParser.ParseMidiFile(midiFile);
-        
+
         if (midiData == null)
         {
             Debug.LogError("Failed to parse MIDI file.");
             return;
         }
-        
-        Debug.Log($"Loaded MIDI file with {midiData.tracks.Count} tracks and total duration of {midiData.totalDuration} seconds");
+
+        Debug.Log(
+            $"Loaded MIDI file with {midiData.tracks.Count} tracks and total duration of {midiData.totalDuration} seconds"
+        );
     }
 
     public void StartPlayback()
@@ -151,11 +157,11 @@ public class MidiNoteSpawner : MonoBehaviour
         {
             LoadMidiFile();
         }
-        
+
         currentPlayTime = 0.0f;
         isPlaying = true;
         Debug.Log("Starting MIDI playback");
-        
+
         // Clear any existing notes
         foreach (SpawnedNote note in activeNotes)
         {
@@ -177,7 +183,7 @@ public class MidiNoteSpawner : MonoBehaviour
     {
         // Calculate position based on note properties
         Vector3 position;
-        
+
         if (useSpiral)
         {
             // Spiral placement
@@ -193,7 +199,7 @@ public class MidiNoteSpawner : MonoBehaviour
         {
             // Grid-based placement
             position = new Vector3(
-                spawnOrigin.x + (note.note - 60) * xSpacing,  // Center around middle C (60)
+                spawnOrigin.x + (note.note - 60) * xSpacing, // Center around middle C (60)
                 spawnOrigin.y + (note.velocity / 127.0f) * ySpacing * 5.0f,
                 spawnOrigin.z
             );
@@ -202,31 +208,31 @@ public class MidiNoteSpawner : MonoBehaviour
         // Instantiate note object
         GameObject noteObject = Instantiate(notePrefab, position, Quaternion.identity);
         noteObject.name = $"Note_{note.note}_{note.channel}";
-        
+
         // Scale based on velocity or duration
         float scale = noteScale * (0.5f + note.velocity / 127.0f);
         noteObject.transform.localScale = new Vector3(scale, scale, scale);
-        
+
         // Color based on note pitch
-        float colorPosition = (note.note % 12) / 12.0f;  // Map to octave position (0-1)
+        float colorPosition = (note.note % 12) / 12.0f; // Map to octave position (0-1)
         Renderer renderer = noteObject.GetComponent<Renderer>();
         if (renderer != null)
         {
             renderer.material.color = noteColorGradient.Evaluate(colorPosition);
         }
-        
+
         // Add to active notes
         SpawnedNote spawnedNote = new SpawnedNote
         {
             gameObject = noteObject,
             spawnTime = Time.time,
             lifetime = noteDuration > 0 ? noteDuration : note.duration,
-            midiNote = note
+            midiNote = note,
         };
-        
+
         activeNotes.Add(spawnedNote);
     }
-    
+
     public float GetPlaybackProgress()
     {
         if (midiData != null && midiData.totalDuration > 0)
@@ -235,7 +241,7 @@ public class MidiNoteSpawner : MonoBehaviour
         }
         return 0f;
     }
-    
+
     public void SetPlaybackPosition(float normalizedPosition)
     {
         if (midiData != null)

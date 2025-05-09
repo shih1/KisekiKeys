@@ -6,6 +6,6 @@ public class AudioPlayer : MonoBehaviour
 
     void Start()
     {
-        audioSource.Play();  // Start playing the audio when the scene loads
+        audioSource.Play(); // Start playing the audio when the scene loads
     }
 }
