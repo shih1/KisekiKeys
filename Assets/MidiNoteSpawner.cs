@@ -14,9 +14,15 @@ public class MidiNoteSpawner : MonoBehaviour
     public float noteScale = 1.0f;
     public float xSpacing = 0.5f;
     public float ySpacing = 0.2f;
-    public float zSpeed = 5.0f;
     public Gradient noteColorGradient;
-    public float noteDuration = 2.0f;
+    public float noteDuration = 30.0f;
+
+    [Header("Physics Configuration")]
+    public float initialForce = 2.0f;     // Initial upward force
+    public float gravityScale = 1.0f;     // Multiplier for gravity strength
+    public bool addRandomSpin = true;     // Add random rotation to notes
+    public float spinForce = 2.0f;        // Maximum spin force magnitude
+    public float horizontalForce = 1.0f;  // Random horizontal force
 
     [Header("Space Configuration")]
     public Vector3 spawnOrigin = Vector3.zero;
@@ -39,6 +45,7 @@ public class MidiNoteSpawner : MonoBehaviour
         public float spawnTime;
         public float lifetime;
         public MidiFileParser.MidiNote midiNote;
+        public Rigidbody rigidbody;
     }
 
     private List<SpawnedNote> activeNotes = new List<SpawnedNote>();
@@ -99,19 +106,22 @@ public class MidiNoteSpawner : MonoBehaviour
             }
         }
 
-        // Update active notes (move them along z-axis, etc.)
+        // Update active notes - check lifetimes and remove expired notes
         for (int i = activeNotes.Count - 1; i >= 0; i--)
         {
             SpawnedNote spawnedNote = activeNotes[i];
 
-            // Move note
+            // Check if note should be removed
             if (spawnedNote.gameObject != null)
             {
-                spawnedNote.gameObject.transform.position += Vector3.back * zSpeed * Time.deltaTime;
-
-                // Check if note should be removed
                 if (Time.time - spawnedNote.spawnTime >= spawnedNote.lifetime)
                 {
+                    Destroy(spawnedNote.gameObject);
+                    activeNotes.RemoveAt(i);
+                }
+                else if (spawnedNote.gameObject.transform.position.y < -20f)
+                {
+                    // Remove notes that have fallen too far
                     Destroy(spawnedNote.gameObject);
                     activeNotes.RemoveAt(i);
                 }
@@ -221,6 +231,54 @@ public class MidiNoteSpawner : MonoBehaviour
             renderer.material.color = noteColorGradient.Evaluate(colorPosition);
         }
 
+        // Add physics components if they don't exist
+        Rigidbody rb = noteObject.GetComponent<Rigidbody>();
+        if (rb == null)
+        {
+            rb = noteObject.AddComponent<Rigidbody>();
+        }
+        
+        // Configure physics properties
+        rb.useGravity = true;
+        rb.mass = 0.5f + (note.velocity / 127.0f) * 2.0f; // Mass based on velocity
+        
+        // Adjust gravity if needed
+        if (gravityScale != 1.0f)
+        {
+            // Unity doesn't have a built-in gravity scale like some other engines
+            // So we'll modify the physics behavior in ForceMode.Acceleration
+            rb.AddForce(Physics.gravity * (gravityScale - 1.0f), ForceMode.Acceleration);
+        }
+        
+        // Add initial vertical force (affected by note velocity)
+        float upForce = -1*initialForce * (0.5f + note.velocity / 127.0f);
+        rb.AddForce(Vector3.up * upForce, ForceMode.Impulse);
+        
+        // Add random horizontal force for more interesting movement
+        Vector3 randomDir = new Vector3(
+            Random.Range(-1f, 1f) * horizontalForce,
+            0,
+            Random.Range(-1f, 1f) * horizontalForce
+        );
+        rb.AddForce(randomDir, ForceMode.Impulse);
+        
+        // Add random spin if enabled
+        if (addRandomSpin)
+        {
+            rb.AddTorque(
+                Random.Range(-spinForce, spinForce),
+                Random.Range(-spinForce, spinForce),
+                Random.Range(-spinForce, spinForce),
+                ForceMode.Impulse
+            );
+        }
+        
+        // Make sure we have a collider (if the prefab doesn't already have one)
+        if (noteObject.GetComponent<Collider>() == null)
+        {
+            noteObject.AddComponent<SphereCollider>();
+        }
+
         // Add to active notes
         SpawnedNote spawnedNote = new SpawnedNote
         {
@@ -228,6 +286,7 @@ public class MidiNoteSpawner : MonoBehaviour
             spawnTime = Time.time,
             lifetime = noteDuration > 0 ? noteDuration : note.duration,
             midiNote = note,
+            rigidbody = rb
         };
 
         activeNotes.Add(spawnedNote);
